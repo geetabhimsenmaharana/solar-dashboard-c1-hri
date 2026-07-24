@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HRI — Estimate Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .proj-bar-row{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .proj-bar-label{ width:70px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim); flex-shrink:0; }
+  .proj-bar-track{ flex:1; background:var(--line); border-radius:4px; height:22px; position:relative; overflow:hidden; }
+  .proj-bar-fill{ height:100%; background:var(--teal); border-radius:4px; }
+  .proj-bar-val{ width:110px; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<header id="mainHeader" class="hidden">
+  <div class="brand">HRI <span>Production Monitor</span></div>
+  <div class="nav-links">
+    <a href="#" id="linkPortfolio">Portfolio</a>
+    <a class="current">Estimate Calculator</a>
+    <a id="linkIssues" href="#">Issues &amp; Notes</a>
+  </div>
+</header>
+
+<main>
+  <div id="connectScreen">
+    <h1>Connect your Google Sheet</h1>
+    <p>Paste your Google Sheet URL to load site estimates. If you arrived here from the dashboard, this happens automatically.</p>
+    <div class="input-row">
+      <input id="sheetUrlInput" placeholder="Paste your Google Sheet URL here…">
+      <button class="primary" onclick="connectSheet()">Connect</button>
+    </div>
+    <div class="progress" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div id="connectStatus"></div>
+  </div>
+
+  <div id="calcWrap" class="hidden">
+    <div class="section-label">Projection</div>
+    <div class="section-title">Estimate Calculator</div>
+    <div class="section-sub">Select a site to see its Year 1 – Year <span id="maxYearLabel">10</span> production estimate, as calculated in your tracker.</div>
+
+    <div class="panel">
+      <h3>Select Site</h3>
+      <select class="select-input" id="siteSelect"></select>
+    </div>
+
+    <div id="siteResult" class="hidden">
+      <div class="panel">
+        <h3 id="resultTitle"></h3>
+        <div class="portfolio-strip" id="resultStrip"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Year-by-Year Estimate</h3>
+        <table>
+          <thead><tr><th>Year</th><th class="num">Calendar Year</th><th class="num">Estimated Output (kWh)</th><th class="num">Actual (kWh)</th><th class="num">% of Estimate</th></tr></thead>
+          <tbody id="yearTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h3>Projected Output by Year</h3>
+        <div id="barRows"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="sheet-utils.js"></script>
+<script>
+let SITES = [];
+let CURRENT_SHEET_ID = null;
+
+async function connectSheet(){
+  const raw = document.getElementById('sheetUrlInput').value.trim();
+  const statusEl = document.getElementById('connectStatus');
+  const progWrap = document.getElementById('progressWrap');
+  const progBar = document.getElementById('progressBar');
+  statusEl.className=""; statusEl.textContent="";
+
+  const sheetId = extractSheetId(raw);
+  if(!sheetId){ statusEl.className="err"; statusEl.textContent="Couldn't find a sheet ID in that URL."; return; }
+
+  progWrap.style.display="block"; progBar.style.width="5%";
+  statusEl.textContent = "Loading sites…";
+
+  let sites;
+  try{
+    sites = await loadFullPortfolio(sheetId, (done,total,siteNum)=>{
+      statusEl.textContent = `Loaded ${siteNum} (${done}/${total})…`;
+      progBar.style.width = Math.min(95, 10+(done/total)*85) + "%";
+    });
+  } catch(e){
+    progWrap.style.display="none";
+    statusEl.className="err";
+    statusEl.textContent = `Couldn't load the sheet. Check it's shared as "Anyone with the link — Viewer".`;
+    return;
+  }
+
+  progBar.style.width="100%";
+  SITES = sites;
+  CURRENT_SHEET_ID = sheetId;
+  document.getElementById('linkPortfolio').href = "index.html?sheet=" + sheetId;
+  document.getElementById('linkIssues').href = "issues.html?sheet=" + sheetId;
+
+  setTimeout(()=>{
+    document.getElementById('connectScreen').classList.add('hidden');
+    document.getElementById('calcWrap').classList.remove('hidden');
+    document.getElementById('mainHeader').classList.remove('hidden');
+    populateSelect();
+  }, 300);
+}
+
+function populateSelect(){
+  const sel = document.getElementById('siteSelect');
+  sel.innerHTML = `<option value="">— Select a site address —</option>` +
+    SITES.map((s,i)=>`<option value="${i}">${s.address||s.site_number} ${s.client_name?"— "+s.client_name:""}</option>`).join("");
+  sel.onchange = ()=> showSite(sel.value);
+}
+
+function showSite(idx){
+  const resultEl = document.getElementById('siteResult');
+  if(idx === ""){ resultEl.classList.add('hidden'); return; }
+  const s = SITES[parseInt(idx)];
+  resultEl.classList.remove('hidden');
+
+  document.getElementById('resultTitle').textContent = `${s.site_number} — ${s.client_name||"Unnamed Site"}`;
+  document.getElementById('resultStrip').innerHTML = `
+    <div class="stat"><div class="lbl">Address</div><div class="num mono" style="font-size:15px;">${s.address||"—"}</div></div>
+    <div class="stat"><div class="lbl">System Activation Date</div><div class="num mono" style="font-size:17px;">${s.activation||"—"}</div></div>
+    <div class="stat"><div class="lbl">Est. Year 1 Output (kWh)</div><div class="num mono ok">${s.est_y1_output?Math.round(s.est_y1_output).toLocaleString():"—"}</div></div>
+  `;
+
+  const years = s.annual.slice(0, 10);
+  document.getElementById('maxYearLabel').textContent = years.length || 10;
+
+  document.getElementById('yearTableBody').innerHTML = years.map(y=>`
+    <tr>
+      <td>${y.year}</td>
+      <td class="num">${y.calendar_year||"—"}</td>
+      <td class="num">${Math.round(y.estimate_mwh*1000).toLocaleString()}</td>
+      <td class="num">${y.actual_mwh>0 ? Math.round(y.actual_mwh*1000).toLocaleString() : "—"}</td>
+      <td class="num">${y.estimate_mwh>0 && y.actual_mwh>0 ? (y.pct*100).toFixed(1)+"%" : "—"}</td>
+    </tr>`).join("") || `<tr><td colspan="5" class="panel-empty">No annual estimate data found for this site.</td></tr>`;
+
+  const maxEst = Math.max(...years.map(y=>y.estimate_mwh), 0.001);
+  document.getElementById('barRows').innerHTML = years.map(y=>`
+    <div class="proj-bar-row">
+      <div class="proj-bar-label">${y.year}</div>
+      <div class="proj-bar-track"><div class="proj-bar-fill" style="width:${(y.estimate_mwh/maxEst*100).toFixed(1)}%"></div></div>
+      <div class="proj-bar-val">${Math.round(y.estimate_mwh*1000).toLocaleString()} kWh</div>
+    </div>`).join("");
+}
+
+document.getElementById('sheetUrlInput').addEventListener('keypress',(e)=>{ if(e.key==='Enter') connectSheet(); });
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  const s = getSheetParamFromUrl();
+  if(s){ document.getElementById('sheetUrlInput').value = s; connectSheet(); }
+});
+</script>
+</body>
+</html>

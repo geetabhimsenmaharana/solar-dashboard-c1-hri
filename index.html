@@ -6,123 +6,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#14171B; --panel:#1B1F24; --panel-hi:#232830; --line:#2C323B;
-    --text:#ECEEF1; --text-dim:#9AA3AD; --amber:#D9A441; --amber-dim:#7A5F2A;
-    --teal:#3E7C7C; --green:#4CAF7D; --red:#E0685A; --grey:#5B6470;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{ background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; }
-  .mono{ font-family:'IBM Plex Mono',monospace; }
-  header{ display:flex; align-items:center; justify-content:space-between; padding:20px 40px;
-    border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:10; flex-wrap:wrap; gap:14px; }
-  .brand{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:26px; display:flex; align-items:baseline; gap:10px; }
-  .brand span{ font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:400; color:var(--amber); letter-spacing:2px; text-transform:uppercase; }
-  .searchbar{ background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px 14px; color:var(--text); font-size:13px; width:260px; outline:none; }
-  .searchbar::placeholder{ color:var(--text-dim); }
-  main{ padding:32px 40px 80px; max-width:1320px; margin:0 auto; }
-
-  /* ---- connect screen ---- */
-  #connectScreen{ max-width:640px; margin:60px auto; }
-  #connectScreen h1{ font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:700; margin-bottom:10px; }
-  #connectScreen p{ color:var(--text-dim); font-size:14px; line-height:1.7; margin-bottom:22px; }
-  #connectScreen ol{ color:var(--text-dim); font-size:13.5px; line-height:2; margin: 0 0 22px 20px; }
-  #connectScreen ol b{ color:var(--text); font-weight:600;}
-  .input-row{ display:flex; gap:10px; margin-bottom:14px; }
-  .input-row input{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px 14px; color:var(--text); font-size:13.5px; outline:none; }
-  .input-row input:focus{ border-color:var(--amber-dim); }
-  button.primary{ background:var(--amber); color:#1a1408; border:none; border-radius:6px; padding:12px 22px; font-weight:600; font-size:13.5px; cursor:pointer; font-family:'Inter'; }
-  button.primary:hover{ opacity:0.9; }
-  button.ghost{ background:transparent; color:var(--text-dim); border:1px solid var(--line); border-radius:6px; padding:11px 18px; font-size:13px; cursor:pointer; font-family:'Inter'; }
-  #connectStatus{ margin-top:14px; font-size:13px; color:var(--text-dim); min-height:20px; }
-  #connectStatus.err{ color:var(--red); }
-  .progress{ height:4px; background:var(--line); border-radius:2px; overflow:hidden; margin-top:10px; display:none; }
-  .progress-bar{ height:100%; background:var(--amber); width:0%; transition:width .2s; }
-
-  /* ---- shared dashboard styles ---- */
-  .section-label{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
-  .section-title{ font-family:'Barlow Condensed',sans-serif; font-size:30px; font-weight:600; margin-bottom:6px; }
-  .section-sub{ font-size:13px; color:var(--text-dim); margin-bottom:22px; }
-  .portfolio-strip{ display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:28px; }
-  .stat{ background:var(--panel); padding:18px 22px; }
-  .stat .num{ font-family:'Barlow Condensed',sans-serif; font-size:30px; font-weight:700; }
-  .stat .lbl{ font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
-  .stat .num.warn{ color:var(--red); } .stat .num.ok{ color:var(--green); } .stat .num.pending{ color:var(--grey); }
-  .filters{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-  .filters button{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim); background:var(--panel); border:1px solid var(--line); padding:7px 14px; border-radius:20px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px; }
-  .filters button.active{ background:var(--amber); color:#1a1408; border-color:var(--amber); font-weight:600; }
-  .grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-  .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; cursor:pointer; transition:border-color .15s, transform .15s; position:relative; }
-  .card:hover{ border-color:var(--amber-dim); transform:translateY(-2px); }
-  .card-top{ padding-right:74px; }
-  .card-code{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-dim); letter-spacing:0.5px; }
-  .card-name{ font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:600; line-height:1.2; margin-top:2px; }
-  .card-addr{ font-size:11px; color:var(--text-dim); margin-top:4px; }
-  .gauge-wrap{ display:flex; align-items:center; gap:12px; margin-top:10px; }
-  .gauge-num{ font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:600; }
-  .gauge-sub{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; }
-  .status-pill{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; padding:4px 8px; border-radius:20px; position:absolute; top:16px; right:18px; white-space:nowrap; }
-  .pill-ok{ background:rgba(76,175,125,0.15); color:var(--green); }
-  .pill-watch{ background:rgba(217,164,65,0.15); color:var(--amber); }
-  .pill-attn{ background:rgba(224,104,90,0.15); color:var(--red); }
-  .pill-pending{ background:rgba(91,100,112,0.2); color:var(--grey); }
-  .pending-note{ font-size:11px; color:var(--text-dim); margin-top:10px; font-style:italic; }
-  .hidden{ display:none; }
-  .back-btn{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); background:none; border:none; cursor:pointer; margin-bottom:20px; display:flex; align-items:center; gap:6px; }
-  .back-btn:hover{ color:var(--amber); }
-  .detail-head{ margin-bottom:24px; }
-  .detail-title{ font-family:'Barlow Condensed',sans-serif; font-size:34px; font-weight:700; }
-  .detail-meta{ font-size:12.5px; color:var(--text-dim); margin-top:6px; line-height:1.8; }
-  .detail-meta b{ color:var(--text); font-weight:500; }
-  .detail-meta a{ color:var(--amber); text-decoration:none; }
-  .panel{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:22px 24px; margin-bottom:22px; }
-  .panel h3{ font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:600; margin-bottom:16px; }
-  .panel-empty{ color:var(--text-dim); font-size:13px; line-height:1.6; }
-  table{ width:100%; border-collapse:collapse; }
-  th, td{ text-align:left; padding:9px 6px; font-size:13px; border-bottom:1px solid var(--line); }
-  th{ color:var(--text-dim); font-weight:500; text-transform:uppercase; font-size:10.5px; letter-spacing:0.5px; }
-  td.num, th.num{ text-align:right; font-family:'IBM Plex Mono',monospace; }
-  tr:last-child td{ border-bottom:none; }
-  .yearpick2{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
-  .yearpick2 button{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim); background:var(--panel-hi); border:1px solid var(--line); padding:5px 12px; border-radius:4px; cursor:pointer; }
-  .yearpick2 button.active{ background:var(--amber); color:#1a1408; font-weight:600; border-color:var(--amber); }
-  .chartbox{ height:200px; display:flex; align-items:flex-end; gap:6px; padding-top:10px; }
-  .bar-pair{ flex:1; display:flex; gap:3px; align-items:flex-end; height:100%; position:relative; }
-  .bar{ flex:1; border-radius:3px 3px 0 0; min-height:1px; }
-  .bar.actual{ background:var(--amber); } .bar.estimate{ background:var(--teal); }
-  .chart-labels{ display:flex; gap:6px; margin-top:8px; }
-  .chart-labels span{ flex:1; text-align:center; font-size:9.5px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; }
-  .legend{ display:flex; gap:18px; font-size:11.5px; color:var(--text-dim); margin-bottom:4px; }
-  .legend span{ display:flex; align-items:center; gap:6px; }
-  .dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
-  .issue-row{ display:flex; gap:14px; padding:10px 0; border-bottom:1px solid var(--line); }
-  .issue-row:last-child{ border-bottom:none; }
-  .issue-date{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--amber); width:90px; flex-shrink:0; }
-  .issue-text{ font-size:13px; color:var(--text-dim); }
-  .no-results{ color:var(--text-dim); font-size:13px; padding:40px 0; text-align:center; }
-  @media (max-width:900px){ .grid{ grid-template-columns:repeat(2,1fr);} .portfolio-strip{grid-template-columns:repeat(2,1fr);} }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header id="mainHeader" class="hidden">
   <div class="brand">HRI <span>Production Monitor</span></div>
-  <div style="display:flex; gap:10px; align-items:center;">
+  <div class="nav-links" id="navLinks">
     <input class="searchbar" id="searchBox" placeholder="Search by site, client, or address…">
-    <button class="ghost" onclick="resetConnection()">Change sheet</button>
+    <a class="current">Portfolio</a>
+    <a id="linkEstimator" href="#">Estimate Calculator</a>
+    <a id="linkIssues" href="#">Issues &amp; Notes</a>
+    <button onclick="resetConnection()">Change sheet</button>
   </div>
 </header>
 
 <main>
-  <!-- CONNECT SCREEN -->
   <div id="connectScreen">
     <h1>Connect your Google Sheet</h1>
-    <p>This dashboard reads live from your production tracker — no data is copied or uploaded anywhere, it's fetched directly from Google's servers each time the page loads.</p>
+    <p>This dashboard reads live from your production tracker — nothing is copied or uploaded, it's fetched directly from Google's servers each time the page loads. Only sites listed in your <b style="color:var(--text)">Site Master List Backend</b> tab are shown.</p>
     <ol>
       <li>Open your Google Sheet, click <b>Share</b>, and set access to <b>"Anyone with the link — Viewer"</b>.</li>
       <li>Copy the sheet's URL from your browser's address bar.</li>
-      <li>Paste it below. Site tabs should be named <b>Site_01, Site_02, …</b> — this matches your tracker's layout.</li>
+      <li>Paste it below.</li>
     </ol>
     <div class="input-row">
       <input id="sheetUrlInput" placeholder="Paste your Google Sheet URL here…">
@@ -132,7 +38,6 @@
     <div id="connectStatus"></div>
   </div>
 
-  <!-- DASHBOARD -->
   <div id="dashboardWrap" class="hidden">
     <div id="overview">
       <div class="section-label">Portfolio</div>
@@ -155,152 +60,11 @@
   </div>
 </main>
 
+<script src="sheet-utils.js"></script>
 <script>
-/* ======================= CSV / SHEET FETCHING ======================= */
-
-function extractSheetId(url){
-  const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-  if(m) return m[1];
-  if(/^[a-zA-Z0-9-_]{20,}$/.test(url.trim())) return url.trim();
-  return null;
-}
-
-// Minimal RFC4180 CSV parser (handles quoted fields with commas/newlines)
-function parseCSV(text){
-  const rows = []; let row = []; let field = ""; let inQuotes = false;
-  for(let i=0; i<text.length; i++){
-    const c = text[i];
-    if(inQuotes){
-      if(c === '"'){
-        if(text[i+1] === '"'){ field += '"'; i++; } else { inQuotes = false; }
-      } else { field += c; }
-    } else {
-      if(c === '"'){ inQuotes = true; }
-      else if(c === ','){ row.push(field); field = ""; }
-      else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
-      else if(c === '\r'){ /* skip */ }
-      else { field += c; }
-    }
-  }
-  if(field.length || row.length){ row.push(field); rows.push(row); }
-  return rows;
-}
-
-function tabUrl(sheetId, tabName){
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
-}
-
-async function fetchTabCSV(sheetId, tabName){
-  const url = tabUrl(sheetId, tabName);
-  let resp;
-  try{
-    resp = await fetch(url);
-  } catch(networkErr){
-    const e = new Error("network"); e.reason = "network"; throw e;
-  }
-  const text = await resp.text();
-  if(!resp.ok){
-    const e = new Error("http_" + resp.status); e.reason = "http"; e.status = resp.status; throw e;
-  }
-  if(text.trim().startsWith("<")){
-    // Google returns an HTML sign-in/error page when the sheet isn't shared, or the tab doesn't exist
-    const e = new Error("html_response"); e.reason = "html"; throw e;
-  }
-  const rows = parseCSV(text);
-  if(rows.length < 2){
-    const e = new Error("empty"); e.reason = "empty"; throw e;
-  }
-  return rows;
-}
-
-// Try a few common tab-naming patterns against tab #1 to find which one matches this sheet
-async function probeTabPattern(sheetId){
-  const patterns = [
-    { name:"Site_01", fn: n => "Site_" + String(n).padStart(2,"0") },
-    { name:"Site_001", fn: n => "Site_" + String(n).padStart(3,"0") },
-    { name:"Site_1", fn: n => "Site_" + n },
-    { name:"Site 01", fn: n => "Site " + String(n).padStart(2,"0") },
-  ];
-  let lastErr = null;
-  for(const p of patterns){
-    try{
-      await fetchTabCSV(sheetId, p.fn(1));
-      return p.fn;
-    } catch(e){ lastErr = e; }
-  }
-  const err = new Error("probe_failed");
-  err.reason = lastErr ? lastErr.reason : "unknown";
-  throw err;
-}
-
-function cell(rows, r, c){
-  if(!rows[r]) return null;
-  const v = rows[r][c];
-  return (v === undefined || v === "") ? null : v;
-}
-function numOf(v){ if(v===null) return null; const n = parseFloat(String(v).replace(/,/g,"")); return isNaN(n) ? null : n; }
-
-function parseSiteSheet(rows, tabName){
-  // rows is 0-indexed array of arrays, matching spreadsheet rows 1-indexed = rows[0]
-  const g = (r,c)=>cell(rows, r, c); // r,c are 1-indexed spreadsheet coords
-  const val = (r,c)=>g(r-1,c-1);
-
-  const site_number = val(2,2) || tabName;
-  const client_name = val(3,2);
-  const address = val(4,2);
-  const capacity_kw = numOf(val(5,2));
-  const inverter = val(6,2);
-  const activation = val(7,2);
-  const monitoring_link = val(11,2);
-  const ytd_actual_kwh = numOf(val(14,2)) || 0;
-  const ytd_estimate_kwh = numOf(val(15,2)) || 0;
-  const ytd_pct = numOf(val(16,2)) || 0;
-
-  // Monthly table: columns J..P (10..16), rows 3.. up to 130
-  const monthly = [];
-  for(let r=3; r<=140; r++){
-    const yr = val(r,10);
-    const month = val(r,11);
-    const dateStr = val(r,12);
-    const act = numOf(val(r,13));
-    const est = numOf(val(r,14));
-    const pct = numOf(val(r,15));
-    const status = val(r,16);
-    if(dateStr !== null && act !== null){
-      monthly.push({ year: yr, month: month, date: dateStr, actual_kwh: act, estimate_kwh: est||0, pct: pct||0, status: status });
-    }
-  }
-
-  // Build annual rollup by grouping monthly entries by "year" label
-  const annualMap = {};
-  monthly.forEach(m=>{
-    if(!m.year) return;
-    if(!annualMap[m.year]) annualMap[m.year] = { actual:0, estimate:0 };
-    annualMap[m.year].actual += m.actual_kwh;
-    annualMap[m.year].estimate += m.estimate_kwh;
-  });
-  const annual = Object.keys(annualMap).map(y=>({
-    year: y,
-    actual_mwh: annualMap[y].actual/1000,
-    estimate_mwh: annualMap[y].estimate/1000,
-    pct: annualMap[y].estimate>0 ? annualMap[y].actual/annualMap[y].estimate : 0
-  }));
-
-  let data_status;
-  if(typeof inverter === "string" && inverter.trim().toLowerCase() === "inactive") data_status = "inactive";
-  else if(monthly.length > 0) data_status = "synced";
-  else data_status = "pending";
-
-  return {
-    site_number, client_name, address, capacity_kw, inverter, activation, monitoring_link,
-    ytd_actual_kwh, ytd_estimate_kwh, ytd_pct, data_status, annual, monthly
-  };
-}
-
-/* ======================= CONNECT FLOW ======================= */
-
 let SITES = [];
 let currentFilter = "all";
+let CURRENT_SHEET_ID = null;
 
 async function connectSheet(){
   const raw = document.getElementById('sheetUrlInput').value.trim();
@@ -318,69 +82,47 @@ async function connectSheet(){
 
   progWrap.style.display = "block";
   progBar.style.width = "5%";
-  statusEl.textContent = "Checking sheet access…";
+  statusEl.textContent = `Reading "${MASTER_LIST_TAB}"…`;
 
-  const testUrl = tabUrl(sheetId, "Site_01");
-  let tabPattern;
+  let sites;
   try{
-    tabPattern = await probeTabPattern(sheetId);
+    sites = await loadFullPortfolio(sheetId, (done, total, siteNum)=>{
+      statusEl.textContent = `Loaded ${siteNum} (${done}/${total})…`;
+      progBar.style.width = Math.min(95, 10 + (done/total)*85) + "%";
+    });
   } catch(e){
     progWrap.style.display = "none";
     statusEl.className = "err";
-    let msg = "";
-    if(e.reason === "html"){
-      msg = `Google returned a sign-in page instead of data — this almost always means the sheet isn't shared publicly yet. Open the sheet → <b>Share</b> → change access to <b>"Anyone with the link — Viewer"</b>, then try again.`;
-    } else if(e.reason === "network"){
-      msg = `The browser blocked the request (this happens when opening the HTML file directly from your computer). Try hosting the file online (e.g. Netlify Drop, GitHub Pages) instead of opening it as a local file.`;
-    } else if(e.reason === "http"){
-      msg = `Google rejected the request (HTTP ${e.status}). Double-check the sheet URL is correct and the sheet is shared as "Anyone with the link".`;
-    } else {
-      msg = `Couldn't find a "Site_01" style tab in this sheet. Check that your first tab is named exactly <b>Site_01</b> (underscore, zero-padded) and that the sheet is shared as "Anyone with the link — Viewer".`;
-    }
-    msg += `<br><br>You can self-test by opening this link directly in a new tab — if you see raw text/numbers, it's working; if you see a Google sign-in page, sharing is the issue: <br><a href="${testUrl}" target="_blank" style="color:var(--amber); word-break:break-all;">${testUrl}</a>`;
+    const testUrl = tabUrl(sheetId, MASTER_LIST_TAB);
+    let msg;
+    if(e.reason === "html") msg = `Google returned a sign-in page instead of data — the sheet isn't shared publicly yet. Open it → <b>Share</b> → <b>"Anyone with the link — Viewer"</b>, then try again.`;
+    else if(e.reason === "network") msg = `The browser blocked the request. If you're opening this file directly from your computer, host it online instead (Netlify Drop, GitHub Pages).`;
+    else msg = `Couldn't read the "${MASTER_LIST_TAB}" tab. Check the tab name matches exactly (including spaces) and the sheet is shared as "Anyone with the link".`;
+    msg += `<br><br>Self-test link: <a href="${testUrl}" target="_blank" style="color:var(--amber); word-break:break-all;">${testUrl}</a>`;
     statusEl.innerHTML = msg;
     return;
-  }
-
-  statusEl.textContent = "Connected — loading sites…";
-  progBar.style.width = "15%";
-
-  const sites = [];
-  let consecutiveMisses = 0;
-  const MAX_SITES = 200;
-  let i = 1;
-
-  while(i <= MAX_SITES && consecutiveMisses < 3){
-    const tabName = tabPattern(i);
-    try{
-      const rows = await fetchTabCSV(sheetId, tabName);
-      const site = parseSiteSheet(rows, tabName);
-      sites.push(site);
-      consecutiveMisses = 0;
-      statusEl.textContent = `Loaded ${tabName} — ${sites.length} site(s) found so far…`;
-      progBar.style.width = Math.min(95, 15 + i*2) + "%";
-    } catch(e){
-      consecutiveMisses++;
-    }
-    i++;
   }
 
   if(sites.length === 0){
     progWrap.style.display = "none";
     statusEl.className = "err";
-    statusEl.textContent = "Found the sheet but couldn't parse any site data from it. Double-check the tab layout matches the tracker template.";
+    statusEl.textContent = `Connected, but found no sites listed in "${MASTER_LIST_TAB}". Check that column A has site numbers matching your site tab names.`;
     return;
   }
 
   progBar.style.width = "100%";
   statusEl.textContent = `Connected — ${sites.length} sites loaded.`;
   SITES = sites;
+  CURRENT_SHEET_ID = sheetId;
+  document.getElementById('linkEstimator').href = "estimator.html?sheet=" + sheetId;
+  document.getElementById('linkIssues').href = "issues.html?sheet=" + sheetId;
+
   setTimeout(()=>{
     document.getElementById('connectScreen').classList.add('hidden');
     document.getElementById('dashboardWrap').classList.remove('hidden');
     document.getElementById('mainHeader').classList.remove('hidden');
     renderAll();
-  }, 500);
+  }, 400);
 }
 
 function resetConnection(){
@@ -389,22 +131,16 @@ function resetConnection(){
   document.getElementById('connectScreen').classList.remove('hidden');
   document.getElementById('progressWrap').style.display = "none";
   document.getElementById('connectStatus').textContent = "";
-  SITES = [];
+  SITES = []; CURRENT_SHEET_ID = null;
 }
 
-/* ======================= RENDERING ======================= */
-
 function statusOf(site){
-  if(site.data_status !== "synced") return site.data_status; // pending / inactive
+  if(site.data_status !== "synced") return site.data_status;
   const pct = site.ytd_pct;
   return pct >= 0.95 ? "ok" : (pct < 0.90 ? "attn" : "watch");
 }
-function pillClassOf(s){
-  return { ok:"pill-ok", watch:"pill-watch", attn:"pill-attn", pending:"pill-pending", inactive:"pill-inactive" }[s];
-}
-function pillLabelOf(s){
-  return { ok:"On Target", watch:"Watch", attn:"Attention", pending:"Awaiting Data", inactive:"Inactive" }[s];
-}
+function pillClassOf(s){ return { ok:"pill-ok", watch:"pill-watch", attn:"pill-attn", pending:"pill-pending", inactive:"pill-inactive" }[s]; }
+function pillLabelOf(s){ return { ok:"On Target", watch:"Watch", attn:"Attention", pending:"Awaiting Data", inactive:"Inactive" }[s]; }
 function gaugeSVG(pct, statusKey){
   const r=20, c=2*Math.PI*r;
   const clamped = Math.min(pct,1.15);
@@ -423,13 +159,12 @@ function renderPortfolioStrip(list){
   const totalEst = synced.reduce((a,s)=>a+s.ytd_estimate_kwh,0);
   const pct = totalEst>0 ? (totalAct/totalEst*100).toFixed(1) : "—";
   const pendingCount = list.filter(s=>s.data_status==="pending").length;
-  const el = document.getElementById('portfolioStrip');
-  el.innerHTML = `
+  document.getElementById('portfolioStrip').innerHTML = `
     <div class="stat"><div class="num mono">${list.length}</div><div class="lbl">Total Sites</div></div>
     <div class="stat"><div class="num mono ok">${synced.length}</div><div class="lbl">Reporting Data</div></div>
     <div class="stat"><div class="num mono pending">${pendingCount}</div><div class="lbl">Awaiting Data</div></div>
-    <div class="stat"><div class="num mono">${Math.round(totalAct).toLocaleString()}</div><div class="lbl">YTD Actual (kWh, synced sites)</div></div>
-    <div class="stat"><div class="num mono ${pct!=="—" && pct>=95?'ok':(pct!=="—"&&pct<90?'warn':'')}">${pct}${pct!=="—"?"%":""}</div><div class="lbl">% of Target (synced sites)</div></div>
+    <div class="stat"><div class="num mono">${Math.round(totalAct).toLocaleString()}</div><div class="lbl">YTD Actual (kWh, synced)</div></div>
+    <div class="stat"><div class="num mono ${pct!=="—" && pct>=95?'ok':(pct!=="—"&&pct<90?'warn':'')}">${pct}${pct!=="—"?"%":""}</div><div class="lbl">% of Target (synced)</div></div>
   `;
 }
 
@@ -443,16 +178,13 @@ function renderFilters(){
 function matchesSearch(site, q){
   if(!q) return true;
   q = q.toLowerCase();
-  return (site.client_name||"").toLowerCase().includes(q) ||
-         (site.address||"").toLowerCase().includes(q) ||
-         (site.site_number||"").toLowerCase().includes(q);
+  return (site.client_name||"").toLowerCase().includes(q) || (site.address||"").toLowerCase().includes(q) || (site.site_number||"").toLowerCase().includes(q);
 }
 
 function renderGrid(){
   const q = document.getElementById('searchBox').value;
   let list = SITES.filter(s=>matchesSearch(s,q));
   if(currentFilter !== "all") list = list.filter(s=>statusOf(s)===currentFilter);
-
   renderPortfolioStrip(SITES.filter(s=>matchesSearch(s,q)));
 
   const grid = document.getElementById('siteGrid');
@@ -507,29 +239,45 @@ function showDetail(idx){
     body.innerHTML = `<div class="panel">
       <h3>Production Data</h3>
       <div class="panel-empty">
-        ${s.data_status==="inactive"
-          ? "This system is marked inactive — no production monitoring is currently expected."
+        ${s.data_status==="inactive" ? "This system is marked inactive — no production monitoring is currently expected."
           : "No actual production data has synced from the monitoring API for this site yet. Once it does, monthly and annual actual-vs-estimate figures will appear here automatically."}
-        ${s.ytd_estimate_kwh ? `<br><br>Estimated output on file: <b style="color:var(--text)">${Math.round(s.ytd_estimate_kwh).toLocaleString()} kWh</b>` : ""}
+        ${s.est_y1_output ? `<br><br>Estimated Year 1 output on file: <b style="color:var(--text)">${Math.round(s.est_y1_output).toLocaleString()} kWh</b>` : ""}
       </div>
+    </div>
+    <div class="panel">
+      <h3>Issues &amp; Notes</h3>
+      <div class="panel-empty">See the <a href="issues.html?sheet=${CURRENT_SHEET_ID}&site=${encodeURIComponent(s.site_number)}" style="color:var(--amber);">Issues &amp; Notes page</a> for this site.</div>
     </div>`;
     return;
   }
 
-  let selectedYear = s.annual[s.annual.length-1].year;
+  let selectedYear = s.monthly.length ? s.monthly[s.monthly.length-1].year : s.annual[0].year;
 
   function renderYearContent(){
-    const yearData = s.annual.find(a=>a.year===selectedYear);
     const monthsForYear = s.monthly.filter(m=>m.year===selectedYear);
     const max = Math.max(...monthsForYear.map(m=>Math.max(m.actual_kwh,m.estimate_kwh)), 1) * 1.15;
-
     document.getElementById('chartBoxD').innerHTML = monthsForYear.map(m=>`
       <div class="bar-pair">
         <div class="bar actual" style="height:${(m.actual_kwh/max*100).toFixed(1)}%" title="Actual: ${m.actual_kwh} kWh"></div>
         <div class="bar estimate" style="height:${(m.estimate_kwh/max*100).toFixed(1)}%" title="Estimate: ${m.estimate_kwh} kWh"></div>
       </div>`).join("");
     document.getElementById('chartLabelsD').innerHTML = monthsForYear.map(m=>`<span>${(m.month||"").slice(0,3)}</span>`).join("");
+
+    // Environmental impact for the selected year
+    const co2 = monthsForYear.reduce((a,m)=>a+m.co2,0);
+    const homes = monthsForYear.reduce((a,m)=>a+m.homes,0);
+    const carbon = monthsForYear.reduce((a,m)=>a+m.carbon,0);
+    const envEl = document.getElementById('envStatsD');
+    if(envEl){
+      envEl.innerHTML = `
+        <div class="stat"><div class="num mono ok">${co2.toLocaleString()}</div><div class="lbl">CO₂ Emissions Avoided</div></div>
+        <div class="stat"><div class="num mono ok">${homes.toLocaleString()}</div><div class="lbl">Equivalent Homes Powered</div></div>
+        <div class="stat"><div class="num mono ok">${carbon.toLocaleString()}</div><div class="lbl">Carbon Sequestered (tree-equiv.)</div></div>
+      `;
+    }
   }
+
+  const monthYears = [...new Set(s.monthly.map(m=>m.year))];
 
   body.innerHTML = `
     <div class="panel">
@@ -540,18 +288,22 @@ function showDetail(idx){
       <div class="chart-labels" id="chartLabelsD"></div>
     </div>
     <div class="panel">
-      <h3>Annual Summary</h3>
-      <table><thead><tr><th>Year</th><th class="num">Actual (MWh)</th><th class="num">Estimate (MWh)</th><th class="num">% of Estimate</th></tr></thead>
-      <tbody>${s.annual.map(a=>`<tr><td>${a.year}</td><td class="num">${a.actual_mwh.toFixed(2)}</td><td class="num">${a.estimate_mwh.toFixed(2)}</td><td class="num">${(a.pct*100).toFixed(1)}%</td></tr>`).join("")}</tbody></table>
+      <h3>Annual Summary <small>Year 1 through Year ${s.annual.length}, as calculated in your tracker</small></h3>
+      <table><thead><tr><th>Year</th><th class="num">Calendar Year</th><th class="num">Actual (MWh)</th><th class="num">Estimate (MWh)</th><th class="num">% of Estimate</th></tr></thead>
+      <tbody>${s.annual.map(a=>`<tr><td>${a.year}</td><td class="num">${a.calendar_year||"—"}</td><td class="num">${a.actual_mwh.toFixed(2)}</td><td class="num">${a.estimate_mwh.toFixed(2)}</td><td class="num">${a.estimate_mwh>0?(a.pct*100).toFixed(1)+"%":"—"}</td></tr>`).join("")}</tbody></table>
     </div>
     <div class="panel">
-      <h3>Issues &amp; Notes <span style="color:var(--text-dim); font-weight:400; font-size:12px;">(auto-flagged months below 90% of estimate)</span></h3>
-      <div id="issuesListD"></div>
+      <h3>Environmental Impact <small>for selected year</small></h3>
+      <div class="portfolio-strip" id="envStatsD" style="margin-bottom:0;"></div>
+    </div>
+    <div class="panel">
+      <h3>Issues &amp; Notes</h3>
+      <div class="panel-empty">See the <a href="issues.html?sheet=${CURRENT_SHEET_ID}&site=${encodeURIComponent(s.site_number)}" style="color:var(--amber);">Issues &amp; Notes page</a> for a full log of flagged months on this site.</div>
     </div>
   `;
 
   const yp = document.getElementById('yearpickD');
-  yp.innerHTML = s.annual.map(a=>`<button data-y="${a.year}" class="${a.year===selectedYear?'active':''}">${a.year}</button>`).join("");
+  yp.innerHTML = monthYears.map(y=>`<button data-y="${y}" class="${y===selectedYear?'active':''}">${y}</button>`).join("");
   yp.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     selectedYear = b.dataset.y;
     yp.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
@@ -559,11 +311,6 @@ function showDetail(idx){
     renderYearContent();
   });
   renderYearContent();
-
-  const flagged = s.monthly.filter(m=>m.status && m.status.toLowerCase()==="attention");
-  document.getElementById('issuesListD').innerHTML = flagged.length ? flagged.map(m=>`
-    <div class="issue-row"><div class="issue-date">${m.date}</div><div class="issue-text">${m.month} ${m.year} — ${m.actual_kwh} kWh actual vs ${Math.round(m.estimate_kwh)} kWh estimate (${(m.pct*100).toFixed(0)}%)</div></div>
-  `).join("") : `<div class="panel-empty">No months flagged for attention.</div>`;
 }
 
 function showOverview(){
@@ -571,13 +318,16 @@ function showOverview(){
   document.getElementById('overview').classList.remove('hidden');
 }
 
-function renderAll(){
-  renderFilters();
-  renderGrid();
-}
+function renderAll(){ renderFilters(); renderGrid(); }
 
 document.getElementById('searchBox').addEventListener('input', renderGrid);
 document.getElementById('sheetUrlInput').addEventListener('keypress', (e)=>{ if(e.key==='Enter') connectSheet(); });
+
+// Auto-connect if ?sheet= is present in the URL (e.g. arriving from another page)
+window.addEventListener('DOMContentLoaded', ()=>{
+  const s = getSheetParamFromUrl();
+  if(s){ document.getElementById('sheetUrlInput').value = s; connectSheet(); }
+});
 </script>
 </body>
 </html>
