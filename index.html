@@ -43,6 +43,13 @@
       <div class="section-label">Portfolio</div>
       <div class="section-title" id="portfolioTitle">HRI Sites — Overview</div>
       <div class="section-sub" id="sectionSub"></div>
+      <div class="panel" style="padding:16px 20px; margin-bottom:20px;">
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <label class="mono" style="font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Viewing Year</label>
+          <select class="select-input" id="yearSelect" style="width:auto; max-width:160px;"></select>
+          <span style="font-size:12px; color:var(--text-dim);">Every site below recalculates for the selected calendar year. Sites without data for that year show "No Data".</span>
+        </div>
+      </div>
       <div class="portfolio-strip" id="portfolioStrip"></div>
       <div class="grid" id="siteGrid"></div>
       <div class="no-results hidden" id="noResults">No sites match your search.</div>
@@ -132,13 +139,52 @@ function resetConnection(){
   SITES = []; CURRENT_SHEET_ID = null;
 }
 
-function statusOf(site){
-  if(site.data_status !== "synced") return site.data_status;
-  const pct = site.ytd_pct;
-  return pct >= 0.95 ? "ok" : (pct < 0.90 ? "attn" : "watch");
+let selectedYear = null;
+
+function yearFromDateStr(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{4})/);
+  return m ? parseInt(m[1]) : null;
 }
-function pillClassOf(s){ return { ok:"pill-ok", watch:"pill-watch", attn:"pill-attn", pending:"pill-pending", inactive:"pill-inactive" }[s]; }
-function pillLabelOf(s){ return { ok:"On Target", watch:"Watch", attn:"Attention", pending:"Awaiting Data", inactive:"Inactive" }[s]; }
+
+function computeAvailableYears(sites){
+  const set = new Set();
+  sites.forEach(s=>{
+    s.monthly.forEach(m=>{ const y = yearFromDateStr(m.date); if(y) set.add(y); });
+    s.annual.forEach(a=>{ if(a.calendar_year) set.add(Math.round(a.calendar_year)); });
+  });
+  return [...set].sort((a,b)=>a-b);
+}
+
+// Recomputes actual/estimate for one site restricted to a specific calendar year
+function getYearPerformance(site, year){
+  if(typeof site.inverter === "string" && site.inverter.trim().toLowerCase()==="inactive"){
+    return { status:"inactive", pct:null, actual:0, estimate:0 };
+  }
+  const months = site.monthly.filter(m => yearFromDateStr(m.date) === year);
+  if(months.length === 0){
+    return { status:"nodata", pct:null, actual:0, estimate:0 };
+  }
+  const actual = months.reduce((a,m)=>a+m.actual_kwh,0);
+  const estimate = months.reduce((a,m)=>a+m.estimate_kwh,0);
+  const pct = estimate>0 ? actual/estimate : null;
+  let status;
+  if(pct===null) status = "nodata";
+  else status = pct>=0.95 ? "ok" : (pct<0.90 ? "attn" : "watch");
+  return { status, pct, actual, estimate };
+}
+
+function populateYearSelect(){
+  const years = computeAvailableYears(SITES);
+  const nowYear = new Date().getFullYear();
+  const sel = document.getElementById('yearSelect');
+  sel.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  selectedYear = years.includes(nowYear) ? nowYear : years[years.length-1];
+  sel.value = selectedYear;
+  sel.onchange = ()=>{ selectedYear = parseInt(sel.value); renderGrid(); };
+}
+function pillClassOf(s){ return { ok:"pill-ok", watch:"pill-watch", attn:"pill-attn", pending:"pill-pending", inactive:"pill-inactive", nodata:"pill-pending" }[s]; }
+function pillLabelOf(s){ return { ok:"On Target", watch:"Watch", attn:"Attention", pending:"Awaiting Data", inactive:"Inactive", nodata:"No Data" }[s]; }
 function gaugeSVG(pct, statusKey){
   const r=20, c=2*Math.PI*r;
   const clamped = Math.min(pct,1.15);
@@ -152,13 +198,16 @@ function gaugeSVG(pct, statusKey){
 }
 
 function renderPortfolioStrip(list){
-  const synced = list.filter(s=>s.data_status==="synced");
-  const totalAct = synced.reduce((a,s)=>a+s.ytd_actual_kwh,0);
-  const totalEst = synced.reduce((a,s)=>a+s.ytd_estimate_kwh,0);
+  let totalAct = 0, totalEst = 0, withData = 0;
+  list.forEach(s=>{
+    const perf = getYearPerformance(s, selectedYear);
+    if(perf.status !== "nodata" && perf.status !== "inactive"){ totalAct += perf.actual; totalEst += perf.estimate; withData++; }
+  });
   const pct = totalEst>0 ? (totalAct/totalEst*100).toFixed(1) : "—";
   document.getElementById('portfolioStrip').innerHTML = `
     <div class="stat"><div class="num mono">${list.length}</div><div class="lbl">Total Sites</div></div>
-    <div class="stat"><div class="num mono ${pct!=="—" && pct>=95?'ok':(pct!=="—"&&pct<90?'warn':'')}">${pct}${pct!=="—"?"%":""}</div><div class="lbl">Portfolio % of Target (Current Year)</div></div>
+    <div class="stat"><div class="num mono">${withData}</div><div class="lbl">Reporting Data for ${selectedYear}</div></div>
+    <div class="stat"><div class="num mono ${pct!=="—" && pct>=95?'ok':(pct!=="—"&&pct<90?'warn':'')}">${pct}${pct!=="—"?"%":""}</div><div class="lbl">Portfolio % of Target — ${selectedYear}</div></div>
   `;
 }
 
@@ -179,19 +228,20 @@ function renderGrid(){
   noResults.classList.add('hidden');
 
   grid.innerHTML = list.map((s)=>{
-    const st = statusOf(s);
+    const perf = getYearPerformance(s, selectedYear);
     const idx = SITES.indexOf(s);
-    const pctDisplay = s.data_status==="synced" ? (s.ytd_pct*100).toFixed(1)+"%" : "—";
-    const pctColorClass = st==="ok" ? "ok" : (st==="attn" ? "warn" : "");
+    const pctDisplay = perf.pct!==null ? (perf.pct*100).toFixed(1)+"%" : "—";
+    const pctColorClass = perf.status==="ok" ? "ok" : (perf.status==="attn" ? "warn" : "");
+    const subLabel = perf.status==="nodata" ? "No data for "+selectedYear : (perf.status==="inactive" ? "System inactive" : "of estimate · "+selectedYear);
     return `<div class="card" onclick="showDetail(${idx})">
-        <div class="status-pill ${pillClassOf(st)}">${pillLabelOf(st)}</div>
+        <div class="status-pill ${pillClassOf(perf.status)}">${pillLabelOf(perf.status)}</div>
         <div class="card-top">
           <div class="card-name">${s.address||s.site_number}</div>
           <div class="card-addr">${s.client_name||""}</div>
         </div>
         <div class="gauge-wrap">
           <div class="gauge-num mono ${pctColorClass}" style="font-size:26px;">${pctDisplay}</div>
-          <div class="gauge-sub">of estimate · current year</div>
+          <div class="gauge-sub">${subLabel}</div>
         </div>
       </div>`;
   }).join("");
@@ -226,10 +276,11 @@ function showDetail(idx){
     return;
   }
 
-  let selectedYear = s.monthly.length ? s.monthly[s.monthly.length-1].year : s.annual[0].year;
+  let matchingAnnual = s.annual.find(a => a.calendar_year === selectedYear);
+  let selectedRelYear = matchingAnnual ? matchingAnnual.year : (s.monthly.length ? s.monthly[s.monthly.length-1].year : s.annual[0].year);
 
   function renderYearContent(){
-    const monthsForYear = s.monthly.filter(m=>m.year===selectedYear);
+    const monthsForYear = s.monthly.filter(m=>m.year===selectedRelYear);
     const max = Math.max(...monthsForYear.map(m=>Math.max(m.actual_kwh,m.estimate_kwh)), 1) * 1.15;
     document.getElementById('chartBoxD').innerHTML = monthsForYear.map(m=>`
       <div class="bar-pair">
@@ -278,9 +329,9 @@ function showDetail(idx){
   `;
 
   const yp = document.getElementById('yearpickD');
-  yp.innerHTML = monthYears.map(y=>`<button data-y="${y}" class="${y===selectedYear?'active':''}">${y}</button>`).join("");
+  yp.innerHTML = monthYears.map(y=>`<button data-y="${y}" class="${y===selectedRelYear?'active':''}">${y}</button>`).join("");
   yp.querySelectorAll('button').forEach(b=>b.onclick=()=>{
-    selectedYear = b.dataset.y;
+    selectedRelYear = b.dataset.y;
     yp.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     renderYearContent();
@@ -293,7 +344,7 @@ function showOverview(){
   document.getElementById('overview').classList.remove('hidden');
 }
 
-function renderAll(){ renderGrid(); }
+function renderAll(){ populateYearSelect(); renderGrid(); }
 
 document.getElementById('searchBox').addEventListener('input', renderGrid);
 document.getElementById('sheetUrlInput').addEventListener('keypress', (e)=>{ if(e.key==='Enter') connectSheet(); });
