@@ -41,10 +41,9 @@
   <div id="dashboardWrap" class="hidden">
     <div id="overview">
       <div class="section-label">Portfolio</div>
-      <div class="section-title" id="portfolioTitle">Sites — Current Year Performance</div>
+      <div class="section-title" id="portfolioTitle">HRI Sites — Overview</div>
       <div class="section-sub" id="sectionSub"></div>
       <div class="portfolio-strip" id="portfolioStrip"></div>
-      <div class="filters" id="filters"></div>
       <div class="grid" id="siteGrid"></div>
       <div class="no-results hidden" id="noResults">No sites match your search.</div>
     </div>
@@ -63,7 +62,6 @@
 <script src="sheet-utils.js"></script>
 <script>
 let SITES = [];
-let currentFilter = "all";
 let CURRENT_SHEET_ID = null;
 
 async function connectSheet(){
@@ -158,21 +156,10 @@ function renderPortfolioStrip(list){
   const totalAct = synced.reduce((a,s)=>a+s.ytd_actual_kwh,0);
   const totalEst = synced.reduce((a,s)=>a+s.ytd_estimate_kwh,0);
   const pct = totalEst>0 ? (totalAct/totalEst*100).toFixed(1) : "—";
-  const pendingCount = list.filter(s=>s.data_status==="pending").length;
   document.getElementById('portfolioStrip').innerHTML = `
     <div class="stat"><div class="num mono">${list.length}</div><div class="lbl">Total Sites</div></div>
-    <div class="stat"><div class="num mono ok">${synced.length}</div><div class="lbl">Reporting Data</div></div>
-    <div class="stat"><div class="num mono pending">${pendingCount}</div><div class="lbl">Awaiting Data</div></div>
-    <div class="stat"><div class="num mono">${Math.round(totalAct).toLocaleString()}</div><div class="lbl">YTD Actual (kWh, synced)</div></div>
-    <div class="stat"><div class="num mono ${pct!=="—" && pct>=95?'ok':(pct!=="—"&&pct<90?'warn':'')}">${pct}${pct!=="—"?"%":""}</div><div class="lbl">% of Target (synced)</div></div>
+    <div class="stat"><div class="num mono ${pct!=="—" && pct>=95?'ok':(pct!=="—"&&pct<90?'warn':'')}">${pct}${pct!=="—"?"%":""}</div><div class="lbl">Portfolio % of Target (Current Year)</div></div>
   `;
-}
-
-function renderFilters(){
-  const el = document.getElementById('filters');
-  const opts = [["all","All Sites"],["ok","On Target"],["watch","Watch"],["attn","Attention"],["pending","Awaiting Data"],["inactive","Inactive"]];
-  el.innerHTML = opts.map(([k,l])=>`<button data-f="${k}" class="${currentFilter===k?'active':''}">${l}</button>`).join("");
-  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{ currentFilter=b.dataset.f; renderGrid(); renderFilters(); });
 }
 
 function matchesSearch(site, q){
@@ -184,8 +171,7 @@ function matchesSearch(site, q){
 function renderGrid(){
   const q = document.getElementById('searchBox').value;
   let list = SITES.filter(s=>matchesSearch(s,q));
-  if(currentFilter !== "all") list = list.filter(s=>statusOf(s)===currentFilter);
-  renderPortfolioStrip(SITES.filter(s=>matchesSearch(s,q)));
+  renderPortfolioStrip(list);
 
   const grid = document.getElementById('siteGrid');
   const noResults = document.getElementById('noResults');
@@ -195,30 +181,19 @@ function renderGrid(){
   grid.innerHTML = list.map((s)=>{
     const st = statusOf(s);
     const idx = SITES.indexOf(s);
-    if(s.data_status === "synced"){
-      return `<div class="card" onclick="showDetail(${idx})">
+    const pctDisplay = s.data_status==="synced" ? (s.ytd_pct*100).toFixed(1)+"%" : "—";
+    const pctColorClass = st==="ok" ? "ok" : (st==="attn" ? "warn" : "");
+    return `<div class="card" onclick="showDetail(${idx})">
         <div class="status-pill ${pillClassOf(st)}">${pillLabelOf(st)}</div>
         <div class="card-top">
-          <div class="card-code">${s.site_number}</div>
-          <div class="card-name">${s.client_name||"—"}</div>
-          <div class="card-addr">${s.address||""}</div>
+          <div class="card-name">${s.address||s.site_number}</div>
+          <div class="card-addr">${s.client_name||""}</div>
         </div>
         <div class="gauge-wrap">
-          ${gaugeSVG(s.ytd_pct, st)}
-          <div><div class="gauge-num mono">${(s.ytd_pct*100).toFixed(1)}%</div><div class="gauge-sub">of estimate · ${s.capacity_kw||"—"} kW</div></div>
+          <div class="gauge-num mono ${pctColorClass}" style="font-size:26px;">${pctDisplay}</div>
+          <div class="gauge-sub">of estimate · current year</div>
         </div>
       </div>`;
-    } else {
-      return `<div class="card" onclick="showDetail(${idx})">
-        <div class="status-pill ${pillClassOf(st)}">${pillLabelOf(st)}</div>
-        <div class="card-top">
-          <div class="card-code">${s.site_number}</div>
-          <div class="card-name">${s.client_name||"—"}</div>
-          <div class="card-addr">${s.address||""}</div>
-        </div>
-        <div class="pending-note">${s.capacity_kw?s.capacity_kw+" kW capacity · ":""}${st==="inactive"?"System inactive":"No production data synced yet"}</div>
-      </div>`;
-    }
   }).join("");
 }
 
@@ -318,7 +293,7 @@ function showOverview(){
   document.getElementById('overview').classList.remove('hidden');
 }
 
-function renderAll(){ renderFilters(); renderGrid(); }
+function renderAll(){ renderGrid(); }
 
 document.getElementById('searchBox').addEventListener('input', renderGrid);
 document.getElementById('sheetUrlInput').addEventListener('keypress', (e)=>{ if(e.key==='Enter') connectSheet(); });
