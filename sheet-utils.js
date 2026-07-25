@@ -214,16 +214,33 @@ function parseSiteTab(rows){
   return { ...meta, data_status, annual, monthly };
 }
 
+function sleep(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+async function fetchTabCSVWithRetry(sheetId, tabName, retries=2){
+  let lastErr;
+  for(let attempt=0; attempt<=retries; attempt++){
+    try{
+      return await fetchTabCSV(sheetId, tabName);
+    } catch(e){
+      lastErr = e;
+      if(attempt < retries) await sleep(300 + attempt*400);
+    }
+  }
+  throw lastErr;
+}
+
 /* ======================= FULL PORTFOLIO LOAD ======================= */
 // Loads the Master List, then every listed site tab, merging Master List meta (authoritative)
 // over each site tab's own meta. Reports progress via onProgress(loadedCount, total, siteNumber).
+// Retries each site fetch on failure, and staggers requests slightly to avoid Google rate-limiting
+// a burst of dozens of near-simultaneous requests.
 async function loadFullPortfolio(sheetId, onProgress){
   const masterList = await fetchMasterList(sheetId);
   const sites = [];
   for(let i=0; i<masterList.length; i++){
     const m = masterList[i];
     try{
-      const rows = await fetchTabCSV(sheetId, m.site_number);
+      const rows = await fetchTabCSVWithRetry(sheetId, m.site_number, 2);
       const tab = parseSiteTab(rows);
       sites.push({
         site_number: m.site_number,
@@ -242,7 +259,8 @@ async function loadFullPortfolio(sheetId, onProgress){
         monthly: tab.monthly,
       });
     } catch(e){
-      // Site listed in Master List but its own tab couldn't be read — still include with Master List meta only
+      // Site listed in Master List but its own tab couldn't be read even after retries —
+      // still include with Master List meta only, flagged as pending.
       sites.push({
         site_number: m.site_number, client_name: m.client_name, address: m.address,
         capacity_kw: m.capacity_kw, inverter: m.inverter, activation: m.activation,
@@ -252,6 +270,7 @@ async function loadFullPortfolio(sheetId, onProgress){
       });
     }
     if(onProgress) onProgress(i+1, masterList.length, m.site_number);
+    await sleep(40); // small stagger between requests to avoid bursts
   }
   return sites;
 }
