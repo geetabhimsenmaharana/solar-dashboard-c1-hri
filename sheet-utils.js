@@ -97,14 +97,25 @@ async function fetchMasterList(sheetId){
   const cEstY1 = idx("est. y1 output (kwh)");
 
   const list = [];
+  const seen = new Set();
   for(let r=1; r<rows.length; r++){
     const row = rows[r];
-    const siteNum = cSite>=0 ? row[cSite] : null;
-    if(!siteNum || !String(siteNum).trim()) continue;
+    let siteNumRaw = cSite>=0 ? row[cSite] : null;
+    if(!siteNumRaw || !String(siteNumRaw).trim()) continue;
+    const siteNum = String(siteNumRaw).trim();
+
+    const clientName = cClient>=0 ? row[cClient] : null;
+    const addr = cAddr>=0 ? row[cAddr] : null;
+    // Skip template/placeholder rows: a real site should have at least a client name or address
+    if((!clientName || !String(clientName).trim()) && (!addr || !String(addr).trim())) continue;
+    // Skip duplicate site numbers (keep the first occurrence)
+    if(seen.has(siteNum)) continue;
+    seen.add(siteNum);
+
     list.push({
-      site_number: String(siteNum).trim(),
-      client_name: cClient>=0 ? row[cClient] : null,
-      address: cAddr>=0 ? row[cAddr] : null,
+      site_number: siteNum,
+      client_name: clientName,
+      address: addr,
       capacity_kw: cSize>=0 ? numOf(row[cSize]) : null,
       inverter: cInv>=0 ? row[cInv] : null,
       activation: cAct>=0 ? row[cAct] : null,
