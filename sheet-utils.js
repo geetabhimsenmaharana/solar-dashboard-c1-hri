@@ -216,14 +216,17 @@ function parseSiteTab(rows){
 
 function sleep(ms){ return new Promise(res=>setTimeout(res, ms)); }
 
-async function fetchTabCSVWithRetry(sheetId, tabName, retries=2){
+async function fetchTabCSVWithRetry(sheetId, tabName, retries=3){
   let lastErr;
   for(let attempt=0; attempt<=retries; attempt++){
     try{
       return await fetchTabCSV(sheetId, tabName);
     } catch(e){
       lastErr = e;
-      if(attempt < retries) await sleep(300 + attempt*400);
+      // Google's rate-limit response often comes back as an HTML page (same shape as a
+      // sharing error), so on any failure we back off generously before retrying:
+      // 1.5s, 3s, 6s, 12s — enough to actually ride out a real throttle window.
+      if(attempt < retries) await sleep(1500 * Math.pow(2, attempt));
     }
   }
   throw lastErr;
@@ -270,7 +273,7 @@ async function loadFullPortfolio(sheetId, onProgress){
       });
     }
     if(onProgress) onProgress(i+1, masterList.length, m.site_number);
-    await sleep(40); // small stagger between requests to avoid bursts
+    await sleep(180); // stagger between requests so we don't trigger Google's rate limiting
   }
   return sites;
 }
