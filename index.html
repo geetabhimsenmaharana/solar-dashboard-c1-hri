@@ -10,135 +10,46 @@
 </head>
 <body>
 
-<header id="mainHeader" class="hidden">
+<header>
   <div class="brand">HRI <span>Production Monitor</span></div>
-  <div class="nav-links" id="navLinks">
+  <div class="nav-links">
     <input class="searchbar" id="searchBox" placeholder="Search by site, client, or address…">
     <a class="current">Portfolio</a>
-    <a id="linkEstimator" href="#">Estimate Calculator</a>
-    <a id="linkIssues" href="#">Issues &amp; Notes</a>
-    <button onclick="resetConnection()">Change sheet</button>
+    <a href="estimator.html">Estimate Calculator</a>
+    <a href="issues.html">Issues &amp; Notes</a>
   </div>
 </header>
 
 <main>
-  <div id="connectScreen">
-    <h1>Connect your Google Sheet</h1>
-    <p>This dashboard reads live from your production tracker — nothing is copied or uploaded, it's fetched directly from Google's servers each time the page loads. Only sites listed in your <b style="color:var(--text)">Site Master List Backend</b> tab are shown.</p>
-    <ol>
-      <li>Open your Google Sheet, click <b>Share</b>, and set access to <b>"Anyone with the link — Viewer"</b>.</li>
-      <li>Copy the sheet's URL from your browser's address bar.</li>
-      <li>Paste it below.</li>
-    </ol>
-    <div class="input-row">
-      <input id="sheetUrlInput" placeholder="Paste your Google Sheet URL here…">
-      <button class="primary" onclick="connectSheet()">Connect</button>
+  <div id="overview">
+    <div class="section-label">Portfolio</div>
+    <div class="section-title">HRI Sites — Overview</div>
+    <div class="section-sub">Data as of last export from your tracker. <span id="dataAsOf"></span></div>
+    <div class="panel" style="padding:16px 20px; margin-bottom:20px;">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <label class="mono" style="font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Viewing Year</label>
+        <select class="select-input" id="yearSelect" style="width:auto; max-width:160px;"></select>
+        <span style="font-size:12px; color:var(--text-dim);">Every site below recalculates for the selected calendar year. Sites without data for that year show "No Data".</span>
+      </div>
     </div>
-    <div class="progress" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
-    <div id="connectStatus"></div>
+    <div class="portfolio-strip" id="portfolioStrip"></div>
+    <div class="grid" id="siteGrid"></div>
+    <div class="no-results hidden" id="noResults">No sites match your search.</div>
   </div>
 
-  <div id="dashboardWrap" class="hidden">
-    <div id="overview">
-      <div class="section-label">Portfolio</div>
-      <div class="section-title" id="portfolioTitle">HRI Sites — Overview</div>
-      <div class="section-sub" id="sectionSub"></div>
-      <div class="panel" style="padding:16px 20px; margin-bottom:20px;">
-        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-          <label class="mono" style="font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Viewing Year</label>
-          <select class="select-input" id="yearSelect" style="width:auto; max-width:160px;"></select>
-          <span style="font-size:12px; color:var(--text-dim);">Every site below recalculates for the selected calendar year. Sites without data for that year show "No Data".</span>
-        </div>
-      </div>
-      <div class="portfolio-strip" id="portfolioStrip"></div>
-      <div class="grid" id="siteGrid"></div>
-      <div class="no-results hidden" id="noResults">No sites match your search.</div>
+  <div id="detail" class="hidden">
+    <button class="back-btn" onclick="showOverview()">&larr; Back to portfolio</button>
+    <div class="detail-head">
+      <div class="detail-title" id="dTitle"></div>
+      <div class="detail-meta" id="dMeta"></div>
     </div>
-
-    <div id="detail" class="hidden">
-      <button class="back-btn" onclick="showOverview()">&larr; Back to portfolio</button>
-      <div class="detail-head">
-        <div class="detail-title" id="dTitle"></div>
-        <div class="detail-meta" id="dMeta"></div>
-      </div>
-      <div id="dBody"></div>
-    </div>
+    <div id="dBody"></div>
   </div>
 </main>
 
-<script src="sheet-utils.js"></script>
+<script src="data.js"></script>
 <script>
-let SITES = [];
-let CURRENT_SHEET_ID = null;
-
-async function connectSheet(){
-  const raw = document.getElementById('sheetUrlInput').value.trim();
-  const statusEl = document.getElementById('connectStatus');
-  const progWrap = document.getElementById('progressWrap');
-  const progBar = document.getElementById('progressBar');
-  statusEl.className = ""; statusEl.textContent = "";
-
-  const sheetId = extractSheetId(raw);
-  if(!sheetId){
-    statusEl.className = "err";
-    statusEl.textContent = "Couldn't find a sheet ID in that URL — please paste the full Google Sheets link.";
-    return;
-  }
-
-  progWrap.style.display = "block";
-  progBar.style.width = "5%";
-  statusEl.textContent = `Reading "${MASTER_LIST_TAB}"…`;
-
-  let sites;
-  try{
-    sites = await loadFullPortfolio(sheetId, (done, total, siteNum)=>{
-      statusEl.textContent = `Loaded ${siteNum} (${done}/${total})…`;
-      progBar.style.width = Math.min(95, 10 + (done/total)*85) + "%";
-    });
-  } catch(e){
-    progWrap.style.display = "none";
-    statusEl.className = "err";
-    const testUrl = tabUrl(sheetId, MASTER_LIST_TAB);
-    let msg;
-    if(e.reason === "html") msg = `Google returned a sign-in page instead of data — the sheet isn't shared publicly yet. Open it → <b>Share</b> → <b>"Anyone with the link — Viewer"</b>, then try again.`;
-    else if(e.reason === "network") msg = `The browser blocked the request. If you're opening this file directly from your computer, host it online instead (Netlify Drop, GitHub Pages).`;
-    else msg = `Couldn't read the "${MASTER_LIST_TAB}" tab. Check the tab name matches exactly (including spaces) and the sheet is shared as "Anyone with the link".`;
-    msg += `<br><br>Self-test link: <a href="${testUrl}" target="_blank" style="color:var(--amber); word-break:break-all;">${testUrl}</a>`;
-    statusEl.innerHTML = msg;
-    return;
-  }
-
-  if(sites.length === 0){
-    progWrap.style.display = "none";
-    statusEl.className = "err";
-    statusEl.textContent = `Connected, but found no sites listed in "${MASTER_LIST_TAB}". Check that column A has site numbers matching your site tab names.`;
-    return;
-  }
-
-  progBar.style.width = "100%";
-  statusEl.textContent = `Connected — ${sites.length} sites loaded.`;
-  SITES = sites;
-  CURRENT_SHEET_ID = sheetId;
-  document.getElementById('linkEstimator').href = "estimator.html?sheet=" + sheetId;
-  document.getElementById('linkIssues').href = "issues.html?sheet=" + sheetId;
-
-  setTimeout(()=>{
-    document.getElementById('connectScreen').classList.add('hidden');
-    document.getElementById('dashboardWrap').classList.remove('hidden');
-    document.getElementById('mainHeader').classList.remove('hidden');
-    renderAll();
-  }, 400);
-}
-
-function resetConnection(){
-  document.getElementById('dashboardWrap').classList.add('hidden');
-  document.getElementById('mainHeader').classList.add('hidden');
-  document.getElementById('connectScreen').classList.remove('hidden');
-  document.getElementById('progressWrap').style.display = "none";
-  document.getElementById('connectStatus').textContent = "";
-  SITES = []; CURRENT_SHEET_ID = null;
-}
-
+const SITES = SITES_DATA;
 let selectedYear = null;
 
 function yearFromDateStr(str){
@@ -149,22 +60,22 @@ function yearFromDateStr(str){
 
 function computeAvailableYears(sites){
   const set = new Set();
+  const nowYear = new Date().getFullYear();
   sites.forEach(s=>{
     s.monthly.forEach(m=>{ const y = yearFromDateStr(m.date); if(y) set.add(y); });
     s.annual.forEach(a=>{ if(a.calendar_year) set.add(Math.round(a.calendar_year)); });
   });
-  return [...set].sort((a,b)=>a-b);
+  // Exclude spreadsheet date-epoch artifacts (blank date cells often evaluate to ~1899)
+  // and cap how far into the future we show, since only elapsed years have real production data.
+  return [...set].filter(y => y >= 2000 && y <= nowYear + 1).sort((a,b)=>a-b);
 }
 
-// Recomputes actual/estimate for one site restricted to a specific calendar year
 function getYearPerformance(site, year){
   if(typeof site.inverter === "string" && site.inverter.trim().toLowerCase()==="inactive"){
     return { status:"inactive", pct:null, actual:0, estimate:0 };
   }
   const months = site.monthly.filter(m => yearFromDateStr(m.date) === year);
-  if(months.length === 0){
-    return { status:"nodata", pct:null, actual:0, estimate:0 };
-  }
+  if(months.length === 0) return { status:"nodata", pct:null, actual:0, estimate:0 };
   const actual = months.reduce((a,m)=>a+m.actual_kwh,0);
   const estimate = months.reduce((a,m)=>a+m.estimate_kwh,0);
   const pct = estimate>0 ? actual/estimate : null;
@@ -175,33 +86,24 @@ function getYearPerformance(site, year){
 }
 
 function populateYearSelect(){
-  const years = computeAvailableYears(SITES);
+  let years = computeAvailableYears(SITES);
   const nowYear = new Date().getFullYear();
+  if(years.length === 0) years = [nowYear];
   const sel = document.getElementById('yearSelect');
   sel.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join("");
   selectedYear = years.includes(nowYear) ? nowYear : years[years.length-1];
   sel.value = selectedYear;
   sel.onchange = ()=>{ selectedYear = parseInt(sel.value); renderGrid(); };
 }
+
 function pillClassOf(s){ return { ok:"pill-ok", watch:"pill-watch", attn:"pill-attn", pending:"pill-pending", inactive:"pill-inactive", nodata:"pill-pending" }[s]; }
 function pillLabelOf(s){ return { ok:"On Target", watch:"Watch", attn:"Attention", pending:"Awaiting Data", inactive:"Inactive", nodata:"No Data" }[s]; }
-function gaugeSVG(pct, statusKey){
-  const r=20, c=2*Math.PI*r;
-  const clamped = Math.min(pct,1.15);
-  const offset = c - Math.min(clamped,1)*c;
-  const colorMap = { ok:"var(--green)", watch:"var(--amber)", attn:"var(--red)", pending:"var(--grey)", inactive:"var(--grey)" };
-  return `<svg width="48" height="48" viewBox="0 0 48 48">
-    <circle cx="24" cy="24" r="${r}" fill="none" stroke="var(--line)" stroke-width="5"/>
-    <circle cx="24" cy="24" r="${r}" fill="none" stroke="${colorMap[statusKey]}" stroke-width="5"
-      stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round" transform="rotate(-90 24 24)"/>
-  </svg>`;
-}
 
 function renderPortfolioStrip(list){
-  let totalAct = 0, totalEst = 0, withData = 0;
+  let totalAct=0, totalEst=0, withData=0;
   list.forEach(s=>{
     const perf = getYearPerformance(s, selectedYear);
-    if(perf.status !== "nodata" && perf.status !== "inactive"){ totalAct += perf.actual; totalEst += perf.estimate; withData++; }
+    if(perf.status!=="nodata" && perf.status!=="inactive"){ totalAct+=perf.actual; totalEst+=perf.estimate; withData++; }
   });
   const pct = totalEst>0 ? (totalAct/totalEst*100).toFixed(1) : "—";
   document.getElementById('portfolioStrip').innerHTML = `
@@ -211,9 +113,9 @@ function renderPortfolioStrip(list){
   `;
 }
 
-function matchesSearch(site, q){
+function matchesSearch(site,q){
   if(!q) return true;
-  q = q.toLowerCase();
+  q=q.toLowerCase();
   return (site.client_name||"").toLowerCase().includes(q) || (site.address||"").toLowerCase().includes(q) || (site.site_number||"").toLowerCase().includes(q);
 }
 
@@ -224,7 +126,7 @@ function renderGrid(){
 
   const grid = document.getElementById('siteGrid');
   const noResults = document.getElementById('noResults');
-  if(list.length === 0){ grid.innerHTML=""; noResults.classList.remove('hidden'); return; }
+  if(list.length===0){ grid.innerHTML=""; noResults.classList.remove('hidden'); return; }
   noResults.classList.add('hidden');
 
   grid.innerHTML = list.map((s)=>{
@@ -271,7 +173,7 @@ function showDetail(idx){
     </div>
     <div class="panel">
       <h3>Issues &amp; Notes</h3>
-      <div class="panel-empty">See the <a href="issues.html?sheet=${CURRENT_SHEET_ID}&site=${encodeURIComponent(s.site_number)}" style="color:var(--amber);">Issues &amp; Notes page</a> for this site.</div>
+      <div class="panel-empty">See the <a href="issues.html?site=${encodeURIComponent(s.site_number)}" style="color:var(--amber);">Issues &amp; Notes page</a> for this site.</div>
     </div>`;
     return;
   }
@@ -289,7 +191,6 @@ function showDetail(idx){
       </div>`).join("");
     document.getElementById('chartLabelsD').innerHTML = monthsForYear.map(m=>`<span>${(m.month||"").slice(0,3)}</span>`).join("");
 
-    // Environmental impact for the selected year
     const co2 = monthsForYear.reduce((a,m)=>a+m.co2,0);
     const homes = monthsForYear.reduce((a,m)=>a+m.homes,0);
     const carbon = monthsForYear.reduce((a,m)=>a+m.carbon,0);
@@ -324,7 +225,7 @@ function showDetail(idx){
     </div>
     <div class="panel">
       <h3>Issues &amp; Notes</h3>
-      <div class="panel-empty">See the <a href="issues.html?sheet=${CURRENT_SHEET_ID}&site=${encodeURIComponent(s.site_number)}" style="color:var(--amber);">Issues &amp; Notes page</a> for a full log of flagged months on this site.</div>
+      <div class="panel-empty">See the <a href="issues.html?site=${encodeURIComponent(s.site_number)}" style="color:var(--amber);">Issues &amp; Notes page</a> for a full log of flagged months on this site.</div>
     </div>
   `;
 
@@ -344,16 +245,10 @@ function showOverview(){
   document.getElementById('overview').classList.remove('hidden');
 }
 
-function renderAll(){ populateYearSelect(); renderGrid(); }
-
 document.getElementById('searchBox').addEventListener('input', renderGrid);
-document.getElementById('sheetUrlInput').addEventListener('keypress', (e)=>{ if(e.key==='Enter') connectSheet(); });
 
-// Auto-connect if ?sheet= is present in the URL (e.g. arriving from another page)
-window.addEventListener('DOMContentLoaded', ()=>{
-  const s = getSheetParamFromUrl();
-  if(s){ document.getElementById('sheetUrlInput').value = s; connectSheet(); }
-});
+populateYearSelect();
+renderGrid();
 </script>
 </body>
 </html>

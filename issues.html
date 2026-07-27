@@ -10,93 +10,33 @@
 </head>
 <body>
 
-<header id="mainHeader" class="hidden">
+<header>
   <div class="brand">HRI <span>Production Monitor</span></div>
   <div class="nav-links">
-    <a href="#" id="linkPortfolio">Portfolio</a>
-    <a href="#" id="linkEstimator">Estimate Calculator</a>
+    <a href="index.html">Portfolio</a>
+    <a href="estimator.html">Estimate Calculator</a>
     <a class="current">Issues &amp; Notes</a>
   </div>
 </header>
 
 <main>
-  <div id="connectScreen">
-    <h1>Connect your Google Sheet</h1>
-    <p>Paste your Google Sheet URL to load flagged issues. If you arrived here from the dashboard, this happens automatically.</p>
-    <div class="input-row">
-      <input id="sheetUrlInput" placeholder="Paste your Google Sheet URL here…">
-      <button class="primary" onclick="connectSheet()">Connect</button>
-    </div>
-    <div class="progress" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
-    <div id="connectStatus"></div>
-  </div>
+  <div class="section-label">Portfolio</div>
+  <div class="section-title">Issues &amp; Notes</div>
+  <div class="section-sub">Months flagged "Attention" (below 90% of estimate) across all sites. Reasons can be filled in directly in each site's tab in your tracker.</div>
 
-  <div id="issuesWrap" class="hidden">
-    <div class="section-label">Portfolio</div>
-    <div class="section-title">Issues &amp; Notes</div>
-    <div class="section-sub">Months flagged "Attention" (below 90% of estimate) across all sites. Reasons can be filled in directly in each site's tab in your tracker.</div>
+  <div class="portfolio-strip" id="issueStats"></div>
+  <div class="filters" id="siteFilterWrap"></div>
 
-    <div class="portfolio-strip" id="issueStats"></div>
-
-    <div class="filters" id="siteFilterWrap"></div>
-
-    <div class="panel">
-      <h3>Flagged Months</h3>
-      <div id="issuesList"></div>
-    </div>
+  <div class="panel">
+    <h3>Flagged Months</h3>
+    <div id="issuesList"></div>
   </div>
 </main>
 
-<script src="sheet-utils.js"></script>
+<script src="data.js"></script>
 <script>
-let SITES = [];
-let CURRENT_SHEET_ID = null;
+const SITES = SITES_DATA;
 let siteFilter = "all";
-let PRESET_SITE = null;
-
-async function connectSheet(){
-  const raw = document.getElementById('sheetUrlInput').value.trim();
-  const statusEl = document.getElementById('connectStatus');
-  const progWrap = document.getElementById('progressWrap');
-  const progBar = document.getElementById('progressBar');
-  statusEl.className=""; statusEl.textContent="";
-
-  const sheetId = extractSheetId(raw);
-  if(!sheetId){ statusEl.className="err"; statusEl.textContent="Couldn't find a sheet ID in that URL."; return; }
-
-  progWrap.style.display="block"; progBar.style.width="5%";
-  statusEl.textContent = "Loading sites…";
-
-  let sites;
-  try{
-    sites = await loadFullPortfolio(sheetId, (done,total,siteNum)=>{
-      statusEl.textContent = `Loaded ${siteNum} (${done}/${total})…`;
-      progBar.style.width = Math.min(95, 10+(done/total)*85) + "%";
-    });
-  } catch(e){
-    progWrap.style.display="none";
-    statusEl.className="err";
-    statusEl.textContent = `Couldn't load the sheet. Check it's shared as "Anyone with the link — Viewer".`;
-    return;
-  }
-
-  progBar.style.width="100%";
-  SITES = sites;
-  CURRENT_SHEET_ID = sheetId;
-  document.getElementById('linkPortfolio').href = "index.html?sheet=" + sheetId;
-  document.getElementById('linkEstimator').href = "estimator.html?sheet=" + sheetId;
-
-  const params = new URLSearchParams(window.location.search);
-  PRESET_SITE = params.get("site");
-  if(PRESET_SITE) siteFilter = PRESET_SITE;
-
-  setTimeout(()=>{
-    document.getElementById('connectScreen').classList.add('hidden');
-    document.getElementById('issuesWrap').classList.remove('hidden');
-    document.getElementById('mainHeader').classList.remove('hidden');
-    renderIssues();
-  }, 300);
-}
 
 function collectFlagged(){
   const flagged = [];
@@ -107,7 +47,6 @@ function collectFlagged(){
       }
     });
   });
-  // most recent first
   flagged.sort((a,b)=> (b.date||"").localeCompare(a.date||""));
   return flagged;
 }
@@ -115,8 +54,8 @@ function collectFlagged(){
 function renderIssues(){
   const all = collectFlagged();
   const bySite = siteFilter==="all" ? all : all.filter(f=>f.site_number===siteFilter);
-
   const sitesWithIssues = [...new Set(all.map(f=>f.site_number))];
+
   document.getElementById('issueStats').innerHTML = `
     <div class="stat"><div class="num mono warn">${all.length}</div><div class="lbl">Total Flagged Months</div></div>
     <div class="stat"><div class="num mono warn">${sitesWithIssues.length}</div><div class="lbl">Sites With Flags</div></div>
@@ -142,12 +81,11 @@ function renderIssues(){
   `).join("");
 }
 
-document.getElementById('sheetUrlInput').addEventListener('keypress',(e)=>{ if(e.key==='Enter') connectSheet(); });
+const params = new URLSearchParams(window.location.search);
+const presetSite = params.get("site");
+if(presetSite) siteFilter = presetSite;
 
-window.addEventListener('DOMContentLoaded', ()=>{
-  const s = getSheetParamFromUrl();
-  if(s){ document.getElementById('sheetUrlInput').value = s; connectSheet(); }
-});
+renderIssues();
 </script>
 </body>
 </html>
