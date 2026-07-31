@@ -32,6 +32,7 @@
         <span style="font-size:12px; color:var(--text-dim);">Every site below recalculates for the selected calendar year. Sites without data for that year show "No Data".</span>
       </div>
     </div>
+    <div class="filters" id="filters"></div>
     <div class="portfolio-strip" id="portfolioStrip"></div>
     <div class="grid" id="siteGrid"></div>
     <div class="no-results hidden" id="noResults">No sites match your search.</div>
@@ -51,6 +52,7 @@
 <script>
 const SITES = SITES_DATA;
 let selectedYear = null;
+let currentFilter = "all";
 
 function yearFromDateStr(str){
   if(!str) return null;
@@ -99,6 +101,18 @@ function populateYearSelect(){
 function pillClassOf(s){ return { ok:"pill-ok", watch:"pill-watch", attn:"pill-attn", pending:"pill-pending", inactive:"pill-inactive", nodata:"pill-pending" }[s]; }
 function pillLabelOf(s){ return { ok:"On Target", watch:"Watch", attn:"Attention", pending:"Awaiting Data", inactive:"Inactive", nodata:"No Data" }[s]; }
 
+function renderFilters(list){
+  const counts = { all: list.length, ok:0, watch:0, attn:0, nodata:0, inactive:0 };
+  list.forEach(s=>{ const st = getYearPerformance(s, selectedYear).status; counts[st] = (counts[st]||0)+1; });
+  const opts = [
+    ["all","All Sites"], ["attn","Attention"], ["watch","Watch"],
+    ["ok","On Target"], ["nodata","No Data"], ["inactive","Inactive"]
+  ];
+  const el = document.getElementById('filters');
+  el.innerHTML = opts.map(([k,l])=>`<button data-f="${k}" class="${currentFilter===k?'active':''}">${l} (${counts[k]||0})</button>`).join("");
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{ currentFilter=b.dataset.f; renderGrid(); });
+}
+
 function renderPortfolioStrip(list){
   let totalAct=0, totalEst=0, withData=0;
   list.forEach(s=>{
@@ -121,8 +135,11 @@ function matchesSearch(site,q){
 
 function renderGrid(){
   const q = document.getElementById('searchBox').value;
-  let list = SITES.filter(s=>matchesSearch(s,q));
-  renderPortfolioStrip(list);
+  let searchList = SITES.filter(s=>matchesSearch(s,q));
+  renderPortfolioStrip(searchList);
+  renderFilters(searchList);
+
+  let list = currentFilter==="all" ? searchList : searchList.filter(s=>getYearPerformance(s, selectedYear).status===currentFilter);
 
   const grid = document.getElementById('siteGrid');
   const noResults = document.getElementById('noResults');
